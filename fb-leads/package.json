@@ -1,0 +1,29 @@
+{
+  "name": "fb-leads",
+  "version": "1.0.0",
+  "description": "Facebook Lead Ads Integration",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "server": "cd server && npm run dev",
+    "client": "cd client && npm start",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "install-all": "npm install && cd client && npm install && cd ../server && npm install",
+    "build": "cd client && npm run build",
+    "heroku-postbuild": "NPM_CONFIG_PRODUCTION=false npm install --prefix client && npm run build --prefix client"
+  },
+  "keywords": [
+    "facebook",
+    "leads",
+    "mern",
+    "react",
+    "node",
+    "mongodb"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "concurrently": "^8.2.0",
+    "mongodb-memory-server": "^10.1.4"
+  }
+}
