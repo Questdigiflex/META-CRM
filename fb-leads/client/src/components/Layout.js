@@ -8,7 +8,8 @@ import {
   CogIcon, 
   ArrowRightOnRectangleIcon,
   Bars3Icon,
-  XMarkIcon
+  XMarkIcon,
+  ChartBarIcon
 } from '@heroicons/react/24/outline';
 
 const Layout = () => {
@@ -20,6 +21,7 @@ const Layout = () => {
     { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
     { name: 'Leads', href: '/leads', icon: DocumentTextIcon },
     { name: 'Forms', href: '/forms', icon: DocumentDuplicateIcon },
+    { name: 'Analytics', href: '/analytics', icon: ChartBarIcon },
     { name: 'Settings', href: '/settings', icon: CogIcon },
   ];
 

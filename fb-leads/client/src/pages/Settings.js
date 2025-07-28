@@ -21,6 +21,7 @@ const Settings = () => {
     register, 
     handleSubmit, 
     reset,
+    getValues,
     formState: { errors, isSubmitting } 
   } = useForm({
     defaultValues: {

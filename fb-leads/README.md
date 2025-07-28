@@ -110,6 +110,49 @@ FACEBOOK_APP_SECRET=your_facebook_app_secret
 3. Generate a long-lived access token
 4. Add your form IDs to the application
 
+## Facebook Ads Analytics Module
+
+### Overview
+
+The Analytics Dashboard allows you to view Facebook Ads performance using your Ad Account ID and Access Token. You can see impressions, clicks, CTR, CPC, spend, and more, with breakdowns by gender, age, device, or platform. Export your analytics to CSV for further analysis.
+
+### Features
+- View campaign/adset/ad performance metrics
+- Filter by ad account, date range, and breakdown (gender, age, device, platform)
+- Visualize spend and CTR with interactive charts
+- Export analytics data to CSV
+- Supports multiple ad accounts and tokens
+- Caches results for fast loading
+
+### Usage
+
+1. **Navigate to Analytics Dashboard**
+   - Go to the Analytics page in the app sidebar.
+
+2. **Select Ad Account and Filters**
+   - Choose your Ad Account from the dropdown (auto-loaded from Facebook).
+   - Select a date range (e.g., today, last 7 days).
+   - Optionally, select a breakdown (e.g., gender, age).
+   - Optionally, enter a custom Facebook Access Token (if not using the saved one).
+
+3. **Load Analytics**
+   - Click "Load Analytics" to fetch and display your ad performance data.
+   - Use the view toggles to switch between table, spend chart, and CTR chart.
+
+4. **Export to CSV**
+   - Click "Export to CSV" to download the current analytics data for offline analysis.
+
+### Troubleshooting
+- **Invalid or Expired Token**: If you see a token error, update your Facebook access token in your profile or provide a new one in the Analytics page.
+- **Permission Issues**: Ensure your Facebook user has access to the selected Ad Account and the required permissions for the Marketing API.
+- **No Data**: Try changing the date range or breakdown. Some combinations may return no results if there was no ad activity.
+- **API Errors**: Detailed error messages from Facebook are shown in the UI. If you see a 403 or permission error, check your token and ad account permissions.
+
+### API Endpoints (Analytics)
+- `GET /api/analytics/insights` - Get Facebook Ads insights (query: ad_account_id, date_preset, breakdown, access_token)
+- `GET /api/analytics/ad-accounts` - List available ad accounts for the user
+- `GET /api/analytics/export` - Export analytics data to CSV
+
 ## API Endpoints
 
 ### Authentication

@@ -10,10 +10,12 @@ const authRoutes = require('./routes/auth');
 const leadRoutes = require('./routes/leads');
 const formRoutes = require('./routes/forms');
 const facebookRoutes = require('./routes/facebook');
+const analyticsRoutes = require('./routes/analytics');
 
 // Controllers
 const facebookLeadController = require('./controllers/facebookLeadController');
 const formController = require('./controllers/formController');
+const analyticsController = require('./controllers/analyticsController');
 
 // Load environment variables
 dotenv.config();
@@ -70,6 +72,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/leads', leadRoutes);
 app.use('/api/forms', formRoutes);
 app.use('/api/facebook', facebookRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {
@@ -90,7 +93,7 @@ app.listen(PORT, () => {
   
   // Start the cron jobs
   facebookLeadController.startCronJob();
-  formController.startFormDiscoveryCron();
+  analyticsController.startCronJob();
   
-  console.log('Cron jobs started: Lead sync (every 2 minutes), Form discovery (every 1 minute)');
+  console.log('Cron jobs started: Lead sync (every 2 minutes), Form discovery (every 1 minute), Analytics refresh (every 6 hours)');
 }); 

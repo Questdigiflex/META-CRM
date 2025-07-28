@@ -11,6 +11,7 @@ import LeadDetail from './pages/LeadDetail';
 import FormManagement from './pages/FormManagement';
 import Settings from './pages/Settings';
 import NotFound from './pages/NotFound';
+import Analytics from './pages/Analytics.jsx';
 
 // Components
 import Layout from './components/Layout';
@@ -33,6 +34,7 @@ function App() {
         <Route path="leads/:id" element={<LeadDetail />} />
         <Route path="forms" element={<FormManagement />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="analytics" element={<Analytics />} />
       </Route>
       
       {/* 404 route */}
