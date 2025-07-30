@@ -79,25 +79,15 @@ const getUserPages = async (req, res) => {
         return res.status(400).json({ success: false, error: 'Failed to fetch pages' });
       }
 
-      // After fetching pages from Facebook:
-      if (response.data && response.data.data) {
-        const pages = response.data.data.map(page => ({
-          pageId: page.id,
-          name: page.name,
-          category: page.category,
-          accessToken: page.access_token
-        }));
-        // Update the app.pages[] in user.facebookApps
-        if (user.facebookApps && app) {
-          const appIndex = user.facebookApps.findIndex(a => a._id.toString() === app._id.toString());
-          if (appIndex !== -1) {
-            user.facebookApps[appIndex].pages = pages;
-            await user.save();
-          }
-        }
-        console.log(`Successfully fetched ${pages.length} pages`);
-        return res.json({ success: true, data: pages });
-      }
+      const pages = response.data.data.map(page => ({
+        pageId: page.id,
+        name: page.name,
+        category: page.category,
+        accessToken: page.access_token
+      }));
+
+      console.log(`Successfully fetched ${pages.length} pages`);
+      return res.json({ success: true, data: pages });
     } catch (error) {
       console.error('Facebook API error:', error.response?.data || error.message);
       let errorMessage = 'Failed to fetch pages';
@@ -422,112 +412,8 @@ const discoverForms = async (req, res) => {
   }
 };
 
-/**
- * Get all ad accounts accessible to the user (not page-specific)
- * @route GET /api/facebook/pages/:pageId/adaccounts
- * @access Private
- */
-const getPageAdAccounts = async (req, res) => {
-  try {
-    const { pageId } = req.params;
-    const { access_token: providedAccessToken } = req.query;
-    const user = await User.findById(req.userId);
-    if (!user || !user.facebookApps) {
-      return res.status(404).json({ success: false, error: 'User or apps not found' });
-    }
-    // Find the page's access token from user's pages
-    let pageAccessToken = null;
-    for (const app of user.facebookApps) {
-      if (app.pages && app.pages.length > 0) {
-        const page = app.pages.find(p => p.pageId === pageId);
-        if (page && page.accessToken) {
-          pageAccessToken = page.accessToken;
-          break;
-        }
-      }
-    }
-    // If not found in stored pages, try to fetch pages and find the token
-    if (!pageAccessToken) {
-      // Try all app tokens to fetch pages
-      for (const app of user.facebookApps) {
-        if (!app.accessToken) continue;
-        try {
-          const axios = require('axios');
-          const response = await axios.get(
-            `https://graph.facebook.com/v18.0/me/accounts?access_token=${app.accessToken}&fields=id,access_token`
-          );
-          if (response.data && response.data.data) {
-            const page = response.data.data.find(p => p.id === pageId);
-            if (page && page.access_token) {
-              pageAccessToken = page.access_token;
-              break;
-            }
-          }
-        } catch (e) { /* ignore and try next app */ }
-      }
-    }
-    // Determine which access token to use (priority: provided > page > app)
-    let tokenToUse = providedAccessToken || pageAccessToken;
-    if (!tokenToUse) {
-      // Try to use any available app access token as fallback
-      for (const app of user.facebookApps) {
-        if (app.accessToken) {
-          tokenToUse = app.accessToken;
-          console.log(`Using app access token for ad accounts fetch: ${app.appName || 'Unknown app'}`);
-          break;
-        }
-      }
-    } else if (providedAccessToken) {
-      console.log('Using provided access token for ad accounts fetch');
-    } else {
-      console.log('Using page access token for ad accounts fetch');
-    }
-    
-    if (!tokenToUse) {
-      return res.status(404).json({ success: false, error: 'No access token available. Please save an access token in Settings.' });
-    }
-    
-    // Fetch ad accounts - Facebook Pages don't have direct adaccounts field
-    // Instead, we get all user's ad accounts via me/adaccounts
-    const axios = require('axios');
-    let adAccountsRes;
-    
-    try {
-      // Get all user's ad accounts using me/adaccounts endpoint
-      adAccountsRes = await axios.get(
-        `https://graph.facebook.com/v18.0/me/adaccounts`,
-        {
-          params: {
-            access_token: tokenToUse,
-            fields: 'id,name,account_id,account_status'
-          }
-        }
-      );
-    } catch (error) {
-      console.error('Failed to fetch user ad accounts:', error.response?.data || error.message);
-      return res.status(500).json({ 
-        success: false, 
-        error: error.response?.data?.error?.message || 'Failed to fetch ad accounts' 
-      });
-    }
-    
-    if (!adAccountsRes.data || !adAccountsRes.data.data) {
-      return res.status(400).json({ success: false, error: 'Failed to fetch ad accounts for this user' });
-    }
-    return res.json({ success: true, data: adAccountsRes.data.data });
-  } catch (error) {
-    console.error('Error fetching ad accounts for page:', error.response?.data || error.message);
-    let errorMessage = 'Failed to fetch ad accounts for this user';
-    if (error.response?.data?.error?.message) {
-      errorMessage = error.response.data.error.message;
-    }
-    return res.status(500).json({ success: false, error: errorMessage });
-  }
-};
-
 module.exports = {
   getUserPages,
   getPageForms,
-  discoverForms,
-  getPageAdAccounts,
+  discoverForms
 }; 

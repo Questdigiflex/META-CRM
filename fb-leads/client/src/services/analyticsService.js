@@ -89,25 +89,6 @@ export const getExportUrl = (params) => {
   return `${baseUrl}/api/analytics/export?${queryParams.toString()}&token=${token}`;
 };
 
-export const getPages = async (appId) => {
-  const response = await api.get('/api/facebook/pages', { params: { appId } });
-  return response.data;
-};
-
-export const getAdAccountsByPage = async (pageId, accessToken = null) => {
-  const params = {};
-  if (accessToken) {
-    params.access_token = accessToken;
-  }
-  const response = await api.get(`/api/facebook/pages/${pageId}/adaccounts`, { params });
-  return response.data;
-};
-
-export const getFacebookApps = async () => {
-  const response = await api.get('/api/facebook/apps');
-  return response.data;
-};
-
 const analyticsService = {
   getInsights,
   getAdAccounts,

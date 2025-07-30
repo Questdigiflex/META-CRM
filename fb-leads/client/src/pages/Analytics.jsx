@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getPages, getAdAccountsByPage, getFacebookApps, getInsights } from '../services/analyticsService';
+import analyticsService from '../services/analyticsService';
 import { toast } from 'react-toastify';
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, 
@@ -34,10 +34,6 @@ const SummaryCard = ({ icon, iconBg, label, value, sub, color }) => (
 const Analytics = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [apps, setApps] = useState([]);
-  const [selectedApp, setSelectedApp] = useState('');
-  const [pages, setPages] = useState([]);
-  const [selectedPage, setSelectedPage] = useState('');
   const [adAccounts, setAdAccounts] = useState([]);
   const [selectedAccount, setSelectedAccount] = useState('');
   const [datePreset, setDatePreset] = useState('last_7d');
@@ -73,111 +69,27 @@ const Analytics = () => {
   const [customEventTable, setCustomEventTable] = useState([]);
   const [tab, setTab] = useState('campaigns');
 
-  // Load Facebook apps on mount
+  // Load ad accounts on component mount
   useEffect(() => {
-    const fetchApps = async () => {
-      try {
-        setLoading(true);
-        const response = await getFacebookApps();
-        if (response.success && response.data) {
-          setApps(response.data);
-          if (response.data.length > 0) {
-            setSelectedApp(response.data[0]._id);
-          }
-        }
-      } catch (error) {
-        toast.error('Failed to load Facebook apps.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchApps();
-  }, []);
-
-  // Auto-set access token when selected app changes
-  useEffect(() => {
-    if (selectedApp && apps.length > 0) {
-      const currentApp = apps.find(app => app._id === selectedApp);
-      if (currentApp && currentApp.accessToken) {
-        setAccessToken(currentApp.accessToken);
-        console.log('Auto-selected access token from app:', currentApp.appName || 'Unknown');
-      } else {
-        setAccessToken('');
-      }
-    }
-  }, [selectedApp, apps]);
-
-  // Fetch pages when selectedApp changes
-  useEffect(() => {
-    if (!selectedApp) {
-      setPages([]);
-      setSelectedPage('');
-      setAdAccounts([]);
-      setSelectedAccount('');
-      return;
-    }
-    const fetchPages = async () => {
-      try {
-        setLoading(true);
-        const response = await getPages(selectedApp);
-        if (response.success && response.data) {
-          setPages(response.data);
-          if (response.data.length > 0) {
-            setSelectedPage(response.data[0].pageId);
-          }
-        }
-      } catch (error) {
-        toast.error('Failed to load Facebook pages.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchPages();
-  }, [selectedApp]);
-
-  // Fetch ad accounts when selectedPage changes
-  useEffect(() => {
-    if (!selectedPage) {
-      setAdAccounts([]);
-      setSelectedAccount('');
-      return;
-    }
     const fetchAdAccounts = async () => {
       try {
         setLoading(true);
-        const response = await getAdAccountsByPage(selectedPage, accessToken);
+        const response = await analyticsService.getAdAccounts();
         if (response.success && response.data) {
           setAdAccounts(response.data);
           if (response.data.length > 0) {
-            setSelectedAccount(response.data[0].id.replace('act_', ''));
-          } else {
-            setSelectedAccount('');
+            const accountId = response.data[0].id.replace('act_', '');
+            setSelectedAccount(accountId);
           }
         }
       } catch (error) {
-        console.error('Error fetching ad accounts:', error);
-        let errorMessage = 'Failed to load ad accounts for this page.';
-        
-        if (error.response?.data?.error) {
-          errorMessage = error.response.data.error;
-        } else if (error.message) {
-          errorMessage = error.message;
-        }
-        
-        // Show more specific error messages
-        if (errorMessage.includes('access token')) {
-          errorMessage += ' Please check your access token in Settings.';
-        }
-        
-        toast.error(errorMessage);
-        setAdAccounts([]);
-        setSelectedAccount('');
+        toast.error('Failed to load ad accounts. Please check your Facebook connection.');
       } finally {
         setLoading(false);
       }
     };
     fetchAdAccounts();
-  }, [selectedPage, accessToken]);
+  }, []);
 
   // Fetch insights when parameters change
   const fetchInsights = async () => {
@@ -192,7 +104,7 @@ const Analytics = () => {
         datePreset,
         accessToken: accessToken || undefined
       };
-      const response = await getInsights(params);
+      const response = await analyticsService.getInsights(params);
       if (response.success && response.data) {
         setInsights(response.data);
         processCampaignData(response.data);
@@ -663,53 +575,27 @@ const Analytics = () => {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Select Facebook App</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Ad Account</label>
             <select
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-              value={selectedApp}
-              onChange={e => setSelectedApp(e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+              value={selectedAccount}
+              onChange={(e) => setSelectedAccount(e.target.value)}
               disabled={loading}
             >
-              <option value="">Select App</option>
-              {apps.map(app => (
-                <option key={app._id} value={app._id}>{app.appName || app.appId}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Select Page</label>
-            <select
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-              value={selectedPage}
-              onChange={e => setSelectedPage(e.target.value)}
-              disabled={loading || !selectedApp}
-            >
-              <option value="">Select Page</option>
-              {pages.map(page => (
-                <option key={page.pageId} value={page.pageId}>{page.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Select Ad Account</label>
-            <select
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-              value={selectedAccount}
-              onChange={e => setSelectedAccount(e.target.value)}
-              disabled={loading || !selectedPage}
-            >
               <option value="">Select Ad Account</option>
-              {adAccounts.map(account => (
-                <option key={account.id} value={account.id.replace('act_', '')}>{account.name || account.id}</option>
+              {adAccounts.map((account) => (
+                  <option key={account.id} value={account.id.replace('act_', '')}>
+                  {account.name || account.id}
+                </option>
               ))}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
             <select
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
               value={datePreset}
-              onChange={e => setDatePreset(e.target.value)}
+              onChange={(e) => setDatePreset(e.target.value)}
               disabled={loading}
             >
               <option value="today">Today</option>
@@ -722,22 +608,17 @@ const Analytics = () => {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Access Token 
-              {accessToken && selectedApp && apps.find(app => app._id === selectedApp)?.accessToken === accessToken && (
-                <span className="text-green-600 text-xs ml-1">(Auto-selected from app)</span>
-              )}
-            </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Access Token (Optional)</label>
             <input
               type="password"
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
               value={accessToken}
-              onChange={e => setAccessToken(e.target.value)}
-              placeholder="Auto-selected from app or enter manually"
+              onChange={(e) => setAccessToken(e.target.value)}
+              placeholder="Use saved token if empty"
               disabled={loading}
             />
           </div>
-        </div>
+          </div>
         </div>
         {/* Campaigns Tab */}
         {tab === 'campaigns' && summaryMetrics && (
