@@ -423,7 +423,7 @@ const discoverForms = async (req, res) => {
 };
 
 /**
- * Get all ad accounts for a Facebook page
+ * Get all ad accounts accessible to the user (not page-specific)
  * @route GET /api/facebook/pages/:pageId/adaccounts
  * @access Private
  */
@@ -487,14 +487,15 @@ const getPageAdAccounts = async (req, res) => {
       return res.status(404).json({ success: false, error: 'No access token available. Please save an access token in Settings.' });
     }
     
-    // Fetch ad accounts connected to this page
+    // Fetch ad accounts - Facebook Pages don't have direct adaccounts field
+    // Instead, we get all user's ad accounts via me/adaccounts
     const axios = require('axios');
     let adAccountsRes;
     
     try {
-      // First try fetching ad accounts directly for the page
+      // Get all user's ad accounts using me/adaccounts endpoint
       adAccountsRes = await axios.get(
-        `https://graph.facebook.com/v18.0/${pageId}/adaccounts`,
+        `https://graph.facebook.com/v18.0/me/adaccounts`,
         {
           params: {
             access_token: tokenToUse,
@@ -502,33 +503,21 @@ const getPageAdAccounts = async (req, res) => {
           }
         }
       );
-    } catch (pageError) {
-      console.log('Failed to fetch ad accounts for page directly, trying user ad accounts approach:', pageError.response?.data?.error?.message);
-      
-      // If page-specific ad accounts fetch fails, try getting all user's ad accounts
-      // This is useful when using app-level tokens
-      try {
-        adAccountsRes = await axios.get(
-          `https://graph.facebook.com/v18.0/me/adaccounts`,
-          {
-            params: {
-              access_token: tokenToUse,
-              fields: 'id,name,account_id,account_status'
-            }
-          }
-        );
-      } catch (userError) {
-        console.error('Failed to fetch user ad accounts:', userError.response?.data || userError.message);
-        throw pageError; // Throw the original page error
-      }
+    } catch (error) {
+      console.error('Failed to fetch user ad accounts:', error.response?.data || error.message);
+      return res.status(500).json({ 
+        success: false, 
+        error: error.response?.data?.error?.message || 'Failed to fetch ad accounts' 
+      });
     }
+    
     if (!adAccountsRes.data || !adAccountsRes.data.data) {
-      return res.status(400).json({ success: false, error: 'Failed to fetch ad accounts for this page' });
+      return res.status(400).json({ success: false, error: 'Failed to fetch ad accounts for this user' });
     }
     return res.json({ success: true, data: adAccountsRes.data.data });
   } catch (error) {
     console.error('Error fetching ad accounts for page:', error.response?.data || error.message);
-    let errorMessage = 'Failed to fetch ad accounts for this page';
+    let errorMessage = 'Failed to fetch ad accounts for this user';
     if (error.response?.data?.error?.message) {
       errorMessage = error.response.data.error.message;
     }
