@@ -94,8 +94,12 @@ export const getPages = async (appId) => {
   return response.data;
 };
 
-export const getAdAccountsByPage = async (pageId) => {
-  const response = await api.get(`/api/facebook/pages/${pageId}/adaccounts`);
+export const getAdAccountsByPage = async (pageId, accessToken = null) => {
+  const params = {};
+  if (accessToken) {
+    params.access_token = accessToken;
+  }
+  const response = await api.get(`/api/facebook/pages/${pageId}/adaccounts`, { params });
   return response.data;
 };
 
