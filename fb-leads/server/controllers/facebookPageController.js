@@ -423,7 +423,7 @@ const discoverForms = async (req, res) => {
 };
 
 /**
- * Get all ad accounts for a Facebook page
+ * Get all ad accounts accessible to the user (Facebook Graph API doesn't support page-specific ad accounts)
  * @route GET /api/facebook/pages/:pageId/adaccounts
  * @access Private
  */
@@ -487,51 +487,74 @@ const getPageAdAccounts = async (req, res) => {
       return res.status(404).json({ success: false, error: 'No access token available. Please save an access token in Settings.' });
     }
     
-    // Fetch ad accounts connected to this page
+    // Fetch user's ad accounts (Facebook doesn't support page-specific ad accounts endpoint)
     const axios = require('axios');
     let adAccountsRes;
     
     try {
-      // First try fetching ad accounts directly for the page
+      console.log('Fetching user ad accounts with access token');
       adAccountsRes = await axios.get(
-        `https://graph.facebook.com/v18.0/${pageId}/adaccounts`,
+        `https://graph.facebook.com/v18.0/me/adaccounts`,
         {
           params: {
             access_token: tokenToUse,
-            fields: 'id,name,account_id,account_status'
+            fields: 'id,name,account_id,account_status,business'
           }
         }
       );
-    } catch (pageError) {
-      console.log('Failed to fetch ad accounts for page directly, trying user ad accounts approach:', pageError.response?.data?.error?.message);
       
-      // If page-specific ad accounts fetch fails, try getting all user's ad accounts
-      // This is useful when using app-level tokens
+      console.log(`Successfully fetched ${adAccountsRes.data?.data?.length || 0} ad accounts`);
+    } catch (error) {
+      console.error('Failed to fetch user ad accounts:', error.response?.data || error.message);
+      
+      // Try alternative endpoint if the first one fails
       try {
-        adAccountsRes = await axios.get(
-          `https://graph.facebook.com/v18.0/me/adaccounts`,
+        console.log('Trying alternative endpoint: me/businesses with ad accounts');
+        const businessRes = await axios.get(
+          `https://graph.facebook.com/v18.0/me/businesses`,
           {
             params: {
               access_token: tokenToUse,
-              fields: 'id,name,account_id,account_status'
+              fields: 'id,name,adaccounts{id,name,account_id,account_status}'
             }
           }
         );
-      } catch (userError) {
-        console.error('Failed to fetch user ad accounts:', userError.response?.data || userError.message);
-        throw pageError; // Throw the original page error
+        
+        // Flatten ad accounts from all businesses
+        const allAdAccounts = [];
+        if (businessRes.data?.data) {
+          businessRes.data.data.forEach(business => {
+            if (business.adaccounts?.data) {
+              allAdAccounts.push(...business.adaccounts.data);
+            }
+          });
+        }
+        
+        adAccountsRes = { data: { data: allAdAccounts } };
+        console.log(`Fetched ${allAdAccounts.length} ad accounts from businesses`);
+      } catch (businessError) {
+        console.error('Failed to fetch ad accounts from businesses:', businessError.response?.data || businessError.message);
+        throw error; // Throw the original error
       }
     }
     if (!adAccountsRes.data || !adAccountsRes.data.data) {
-      return res.status(400).json({ success: false, error: 'Failed to fetch ad accounts for this page' });
+      return res.status(400).json({ success: false, error: 'No ad accounts found. Make sure your access token has ads_read permission and you have access to ad accounts.' });
     }
     return res.json({ success: true, data: adAccountsRes.data.data });
   } catch (error) {
-    console.error('Error fetching ad accounts for page:', error.response?.data || error.message);
-    let errorMessage = 'Failed to fetch ad accounts for this page';
+    console.error('Error fetching ad accounts:', error.response?.data || error.message);
+    let errorMessage = 'Failed to fetch ad accounts';
     if (error.response?.data?.error?.message) {
       errorMessage = error.response.data.error.message;
     }
+    
+    // Provide more helpful error messages for common issues
+    if (errorMessage.includes('permissions') || errorMessage.includes('scope')) {
+      errorMessage += '. Please ensure your access token has ads_read permission.';
+    } else if (errorMessage.includes('token')) {
+      errorMessage += '. Please check your access token is valid and not expired.';
+    }
+    
     return res.status(500).json({ success: false, error: errorMessage });
   }
 };
