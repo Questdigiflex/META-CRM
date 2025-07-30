@@ -59,7 +59,7 @@ router.get('/pages', facebookPageController.getUserPages);
 router.get('/pages/:pageId/forms', facebookPageController.getPageForms);
 
 // @route   GET /api/facebook/pages/:pageId/adaccounts
-// @desc    Get all ad accounts for a Facebook page
+// @desc    Get all ad accounts accessible to the user (not page-specific)
 // @access  Private
 router.get('/pages/:pageId/adaccounts', facebookPageController.getPageAdAccounts);
 
