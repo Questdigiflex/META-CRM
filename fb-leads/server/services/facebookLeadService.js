@@ -27,14 +27,7 @@ class FacebookLeadService {
     
     // If specific app ID is provided, get that token
     if (appId) {
-      // First try to find by _id (MongoDB ObjectId)
-      let app = user.facebookApps.find(app => app._id.toString() === appId);
-      
-      // If not found by _id, try to find by appId (Facebook app ID)
-      if (!app) {
-        app = user.facebookApps.find(app => app.appId === appId);
-      }
-      
+      const app = user.facebookApps.find(app => app._id.toString() === appId);
       if (!app) {
         throw new Error('Facebook app not found');
       }

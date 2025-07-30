@@ -153,22 +153,10 @@ class FacebookLeadController {
         // Sync leads for each form
         for (const form of forms) {
           try {
-            // Get the app ID for this form
-            let appId = form.facebookAppId;
-            
-            // If form doesn't have facebookAppId, try to find a suitable app for the user
-            if (!appId) {
-              const user = await User.findById(form.userId);
-              if (user && user.facebookApps && user.facebookApps.length > 0) {
-                appId = user.facebookApps[0]._id.toString();
-                console.log(`Form ${form.formId} has no facebookAppId, using first available app: ${appId}`);
-              }
-            }
-            
             await this.syncFacebookLeads({
               userId: form.userId,
               formId: form.formId,
-              appId: appId
+              appId: form.facebookAppId // Use the app ID associated with the form
             });
           } catch (error) {
             console.error(`Error syncing leads for form ${form.formId}:`, error);

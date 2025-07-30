@@ -104,25 +104,6 @@ export const getFacebookApps = async () => {
   return response.data;
 };
 
-/**
- * Migrate forms to fix missing facebookAppId
- * @returns {Promise<Object>} - The migration result
- */
-export const migrateForms = async () => {
-  try {
-    const response = await api.post('/api/facebook/migrate-forms');
-    return response.data;
-  } catch (error) {
-    let errorMsg = 'Failed to migrate forms';
-    if (error.response && error.response.data && error.response.data.error) {
-      errorMsg = error.response.data.error;
-    } else if (error.message) {
-      errorMsg = error.message;
-    }
-    throw new Error(errorMsg);
-  }
-};
-
 const analyticsService = {
   getInsights,
   getAdAccounts,

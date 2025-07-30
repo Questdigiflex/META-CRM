@@ -79,18 +79,4 @@ router.get('/forms/:formId/leads', facebookLeadController.getLeads);
 // @access  Private
 router.get('/forms/:formId/sync', facebookLeadController.handleManualSync);
 
-// @route   POST /api/facebook/migrate-forms
-// @desc    Migrate forms to fix missing facebookAppId
-// @access  Private
-router.post('/migrate-forms', async (req, res) => {
-  try {
-    const { migrateForms } = require('../scripts/migrateForms');
-    await migrateForms();
-    res.json({ success: true, message: 'Form migration completed successfully' });
-  } catch (error) {
-    console.error('Migration error:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
 module.exports = router;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getPages, getAdAccountsByPage, getFacebookApps, getInsights, migrateForms } from '../services/analyticsService';
+import { getPages, getAdAccountsByPage, getFacebookApps, getInsights } from '../services/analyticsService';
 import { toast } from 'react-toastify';
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, 
@@ -72,7 +72,6 @@ const Analytics = () => {
   const [customEventPie, setCustomEventPie] = useState([]);
   const [customEventTable, setCustomEventTable] = useState([]);
   const [tab, setTab] = useState('campaigns');
-  const [migrating, setMigrating] = useState(false);
 
   // Load Facebook apps on mount
   useEffect(() => {
@@ -601,23 +600,6 @@ const Analytics = () => {
     // eslint-disable-next-line
   }, [tab]);
 
-  // Migration function
-  const handleMigrateForms = async () => {
-    try {
-      setMigrating(true);
-      const response = await migrateForms();
-      if (response.success) {
-        toast.success('Form migration completed successfully!');
-      } else {
-        toast.error('Migration failed: ' + (response.error || 'Unknown error'));
-      }
-    } catch (error) {
-      toast.error('Migration failed: ' + error.message);
-    } finally {
-      setMigrating(false);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white shadow-sm border-b border-gray-200">
@@ -652,25 +634,6 @@ const Analytics = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Filter Controls */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-          <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-blue-800">
-                  Having issues with Facebook app selection?
-                </h3>
-                <div className="mt-2 text-sm text-blue-700">
-                  <p>
-                    If you're seeing "Facebook app not found" errors, click the "Fix Form Associations" button below to automatically associate your forms with the correct Facebook app.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Select Facebook App</label>
@@ -741,15 +704,6 @@ const Analytics = () => {
               placeholder="Use saved token if empty"
               disabled={loading}
             />
-          </div>
-          <div className="flex items-end">
-            <button
-              onClick={handleMigrateForms}
-              disabled={migrating}
-              className="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50"
-            >
-              {migrating ? 'Migrating...' : 'Fix Form Associations'}
-            </button>
           </div>
         </div>
         </div>
