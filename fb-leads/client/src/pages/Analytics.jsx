@@ -94,6 +94,19 @@ const Analytics = () => {
     fetchApps();
   }, []);
 
+  // Auto-set access token when selected app changes
+  useEffect(() => {
+    if (selectedApp && apps.length > 0) {
+      const currentApp = apps.find(app => app._id === selectedApp);
+      if (currentApp && currentApp.accessToken) {
+        setAccessToken(currentApp.accessToken);
+        console.log('Auto-selected access token from app:', currentApp.appName || 'Unknown');
+      } else {
+        setAccessToken('');
+      }
+    }
+  }, [selectedApp, apps]);
+
   // Fetch pages when selectedApp changes
   useEffect(() => {
     if (!selectedApp) {
@@ -132,7 +145,7 @@ const Analytics = () => {
     const fetchAdAccounts = async () => {
       try {
         setLoading(true);
-        const response = await getAdAccountsByPage(selectedPage);
+        const response = await getAdAccountsByPage(selectedPage, accessToken);
         if (response.success && response.data) {
           setAdAccounts(response.data);
           if (response.data.length > 0) {
@@ -142,7 +155,21 @@ const Analytics = () => {
           }
         }
       } catch (error) {
-        toast.error('Failed to load ad accounts for this page.');
+        console.error('Error fetching ad accounts:', error);
+        let errorMessage = 'Failed to load ad accounts for this page.';
+        
+        if (error.response?.data?.error) {
+          errorMessage = error.response.data.error;
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+        
+        // Show more specific error messages
+        if (errorMessage.includes('access token')) {
+          errorMessage += ' Please check your access token in Settings.';
+        }
+        
+        toast.error(errorMessage);
         setAdAccounts([]);
         setSelectedAccount('');
       } finally {
@@ -150,7 +177,7 @@ const Analytics = () => {
       }
     };
     fetchAdAccounts();
-  }, [selectedPage]);
+  }, [selectedPage, accessToken]);
 
   // Fetch insights when parameters change
   const fetchInsights = async () => {
@@ -695,13 +722,18 @@ const Analytics = () => {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Access Token (Optional)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Access Token 
+              {accessToken && selectedApp && apps.find(app => app._id === selectedApp)?.accessToken === accessToken && (
+                <span className="text-green-600 text-xs ml-1">(Auto-selected from app)</span>
+              )}
+            </label>
             <input
               type="password"
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
               value={accessToken}
               onChange={e => setAccessToken(e.target.value)}
-              placeholder="Use saved token if empty"
+              placeholder="Auto-selected from app or enter manually"
               disabled={loading}
             />
           </div>
