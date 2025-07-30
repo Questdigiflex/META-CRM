@@ -89,6 +89,40 @@ export const getExportUrl = (params) => {
   return `${baseUrl}/api/analytics/export?${queryParams.toString()}&token=${token}`;
 };
 
+export const getPages = async (appId) => {
+  const response = await api.get('/api/facebook/pages', { params: { appId } });
+  return response.data;
+};
+
+export const getAdAccountsByPage = async (pageId) => {
+  const response = await api.get(`/api/facebook/pages/${pageId}/adaccounts`);
+  return response.data;
+};
+
+export const getFacebookApps = async () => {
+  const response = await api.get('/api/facebook/apps');
+  return response.data;
+};
+
+/**
+ * Migrate forms to fix missing facebookAppId
+ * @returns {Promise<Object>} - The migration result
+ */
+export const migrateForms = async () => {
+  try {
+    const response = await api.post('/api/facebook/migrate-forms');
+    return response.data;
+  } catch (error) {
+    let errorMsg = 'Failed to migrate forms';
+    if (error.response && error.response.data && error.response.data.error) {
+      errorMsg = error.response.data.error;
+    } else if (error.message) {
+      errorMsg = error.message;
+    }
+    throw new Error(errorMsg);
+  }
+};
+
 const analyticsService = {
   getInsights,
   getAdAccounts,

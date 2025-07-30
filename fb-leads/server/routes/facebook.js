@@ -58,6 +58,11 @@ router.get('/pages', facebookPageController.getUserPages);
 // @access  Private
 router.get('/pages/:pageId/forms', facebookPageController.getPageForms);
 
+// @route   GET /api/facebook/pages/:pageId/adaccounts
+// @desc    Get all ad accounts for a Facebook page
+// @access  Private
+router.get('/pages/:pageId/adaccounts', facebookPageController.getPageAdAccounts);
+
 // @route   GET /api/facebook/discover
 // @desc    Discover and save all forms for a user
 // @access  Private
@@ -73,5 +78,19 @@ router.get('/forms/:formId/leads', facebookLeadController.getLeads);
 // @desc    Sync leads for a form
 // @access  Private
 router.get('/forms/:formId/sync', facebookLeadController.handleManualSync);
+
+// @route   POST /api/facebook/migrate-forms
+// @desc    Migrate forms to fix missing facebookAppId
+// @access  Private
+router.post('/migrate-forms', async (req, res) => {
+  try {
+    const { migrateForms } = require('../scripts/migrateForms');
+    await migrateForms();
+    res.json({ success: true, message: 'Form migration completed successfully' });
+  } catch (error) {
+    console.error('Migration error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 module.exports = router;
