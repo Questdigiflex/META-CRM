@@ -246,9 +246,9 @@ const getPageForms = async (req, res) => {
 // @access  Private
 const discoverForms = async (req, res) => {
   try {
-    const { appId } = req.query;
+    const { appId, pageIds } = req.query;
 
-    console.log('GET /api/facebook/discover - App ID received:', appId);
+    console.log('GET /api/facebook/discover - App ID received:', appId, 'Page IDs received:', pageIds);
 
     if (!appId) {
       return res.status(400).json({ success: false, error: 'App ID is required' });
@@ -308,7 +308,7 @@ const discoverForms = async (req, res) => {
     });
 
     // Get pages from Facebook
-    let pages = [];
+    let allPages = [];
     try {
       console.log(`Discovering forms for app: ${app.appName || 'Unknown app'} with token: ${app.accessToken.substring(0, 10)}...`);
       const response = await axios.get(
@@ -319,8 +319,8 @@ const discoverForms = async (req, res) => {
         return res.status(400).json({ success: false, error: 'Failed to fetch pages' });
       }
 
-      pages = response.data.data;
-      console.log(`Found ${pages.length} pages`);
+      allPages = response.data.data;
+      console.log(`Found ${allPages.length} total pages`);
     } catch (error) {
       console.error('Facebook API error:', error.response?.data || error.message);
       let errorMessage = 'Failed to fetch pages';
@@ -338,6 +338,24 @@ const discoverForms = async (req, res) => {
         success: false, 
         error: errorMessage
       });
+    }
+
+    // Filter pages based on selected page IDs
+    let pages = allPages;
+    if (pageIds && pageIds.trim() !== '') {
+      const selectedPageIds = pageIds.split(',').map(id => id.trim());
+      console.log('Selected page IDs:', selectedPageIds);
+      console.log('All page IDs:', allPages.map(p => p.id));
+      
+      pages = allPages.filter(page => {
+        const isSelected = selectedPageIds.includes(page.id);
+        console.log(`Page ${page.name} (${page.id}) - Selected: ${isSelected}`);
+        return isSelected;
+      });
+      console.log(`Filtered to ${pages.length} selected pages out of ${allPages.length} total pages`);
+      console.log('Selected pages:', pages.map(p => `${p.name} (${p.id})`));
+    } else {
+      console.log('No pageIds provided, using all pages');
     }
 
     // For each page, get forms
@@ -401,10 +419,14 @@ const discoverForms = async (req, res) => {
 
     return res.json({ 
       success: true, 
-      message: `Discovered ${totalForms} forms from ${pages.length} pages, saved ${savedForms} new forms`,
+      message: `Discovered ${totalForms} forms from ${pages.length} selected pages, saved ${savedForms} new forms`,
       forms: totalForms,
       pages: pages.length,
-      newForms: savedForms
+      newForms: savedForms,
+      debug: {
+        selectedPageIds: pageIds ? pageIds.split(',').map(id => id.trim()) : [],
+        processedPages: pages.map(p => ({ id: p.id, name: p.name }))
+      }
     });
   } catch (error) {
     console.error('Error discovering forms:', error);

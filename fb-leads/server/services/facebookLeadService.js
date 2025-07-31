@@ -20,34 +20,26 @@ class FacebookLeadService {
    */
   async validateUserConfig(userId, appId = null) {
     const user = await User.findById(userId);
-    
+
     if (!user) {
       throw new Error('User not found');
     }
-    
-    // If specific app ID is provided, get that token
-    if (appId) {
+
+    // 1. If specific app ID is provided, get that token
+    if (appId && user.facebookApps && user.facebookApps.length > 0) {
       const app = user.facebookApps.find(app => app._id.toString() === appId);
-      if (!app) {
+      if (app) {
+        return {
+          user,
+          accessToken: app.accessToken,
+          appId: app._id.toString()
+        };
+      } else {
         throw new Error('Facebook app not found');
       }
-      
-      return {
-        user,
-        accessToken: app.accessToken,
-        appId: app._id.toString()
-      };
     }
-    
-    // Otherwise, use legacy token or first available token
-    if (user.accessToken) {
-      return {
-        user,
-        accessToken: user.accessToken,
-        appId: 'legacy'
-      };
-    }
-    
+
+    // 2. Use first available app token if present
     if (user.facebookApps && user.facebookApps.length > 0) {
       const app = user.facebookApps[0];
       return {
@@ -56,7 +48,17 @@ class FacebookLeadService {
         appId: app._id.toString()
       };
     }
-    
+
+    // 3. Use legacy token as fallback
+    if (user.accessToken) {
+      return {
+        user,
+        accessToken: user.accessToken,
+        appId: 'legacy'
+      };
+    }
+
+    // 4. No valid token found
     throw new Error('Facebook Access Token is required');
   }
 

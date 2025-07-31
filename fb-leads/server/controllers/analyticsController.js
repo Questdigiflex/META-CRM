@@ -286,9 +286,204 @@ const startCronJob = () => {
   analyticsService.setupCronJob(cron);
 };
 
+/**
+ * Get available Facebook pages for the user
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+const getPages = async (req, res) => {
+  try {
+    const userId = req.userId;
+    
+    // Get user to find access token
+    const user = await User.findById(userId);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+    
+    // Get access token from user's Facebook apps (same approach as facebookPageController)
+    let accessToken = null;
+    let app = null;
+    
+    if (user.facebookApps && user.facebookApps.length > 0) {
+      // Use the first available app
+      app = user.facebookApps.find(app => app.accessToken);
+      if (app) {
+        accessToken = app.accessToken;
+      }
+    } else if (user.accessToken) {
+      // Fall back to legacy token if available
+      accessToken = user.accessToken;
+    }
+    
+    if (!accessToken) {
+      return res.status(400).json({
+        success: false,
+        error: 'No Facebook access token available. Please connect a Facebook account.'
+      });
+    }
+    
+    // Fetch pages from Facebook API (same endpoint as facebookPageController)
+    const axios = require('axios');
+    const response = await axios.get('https://graph.facebook.com/v18.0/me/accounts', {
+      params: {
+        access_token: accessToken,
+        fields: 'id,name,category'
+      }
+    });
+    
+    if (!response.data || !response.data.data) {
+      throw new Error('Invalid response from Facebook Pages API');
+    }
+    
+    // Return pages in the same format as facebookPageController
+    const pages = response.data.data.map(page => ({
+      id: page.id,
+      name: page.name,
+      category: page.category
+    }));
+    
+    console.log(`Successfully fetched ${pages.length} pages for analytics`);
+    
+    // Return pages
+    res.json({
+      success: true,
+      data: pages
+    });
+  } catch (error) {
+    console.error('Error getting pages:', error);
+    
+    // Handle Facebook API errors
+    if (error.response && error.response.data && error.response.data.error) {
+      return res.status(400).json({
+        success: false,
+        error: `Facebook API Error: ${error.response.data.error.message}`
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch pages'
+    });
+  }
+};
+
+/**
+ * Get ad accounts for a specific page
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+const getAdAccountsByPage = async (req, res) => {
+  try {
+    const { pageId } = req.query;
+    const userId = req.userId;
+    
+    if (!pageId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Page ID is required'
+      });
+    }
+    
+    // Get user to find access token
+    const user = await User.findById(userId);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+    
+    // Get access token from user's Facebook apps (same approach as facebookPageController)
+    let accessToken = null;
+    
+    if (user.facebookApps && user.facebookApps.length > 0) {
+      // Use the first available app
+      const app = user.facebookApps.find(app => app.accessToken);
+      if (app) {
+        accessToken = app.accessToken;
+      }
+    } else if (user.accessToken) {
+      // Fall back to legacy token if available
+      accessToken = user.accessToken;
+    }
+    
+    if (!accessToken) {
+      return res.status(400).json({
+        success: false,
+        error: 'No Facebook access token available. Please connect a Facebook account.'
+      });
+    }
+    
+    // First get the page access token (same approach as facebookPageController)
+    const axios = require('axios');
+    const pagesResponse = await axios.get('https://graph.facebook.com/v18.0/me/accounts', {
+      params: {
+        access_token: accessToken,
+        fields: 'id,access_token'
+      }
+    });
+    
+    if (!pagesResponse.data || !pagesResponse.data.data) {
+      throw new Error('Invalid response from Facebook Pages API');
+    }
+    
+    const page = pagesResponse.data.data.find(p => p.id === pageId);
+    
+    if (!page) {
+      return res.status(404).json({
+        success: false,
+        error: 'Page not found'
+      });
+    }
+    
+    // Now get ad accounts for this page
+    const adAccountsResponse = await axios.get(`https://graph.facebook.com/v18.0/${pageId}/adaccounts`, {
+      params: {
+        access_token: page.access_token,
+        fields: 'id,name,account_id,account_status'
+      }
+    });
+    
+    if (!adAccountsResponse.data || !adAccountsResponse.data.data) {
+      throw new Error('Invalid response from Facebook Ad Accounts API');
+    }
+    
+    console.log(`Successfully fetched ${adAccountsResponse.data.data.length} ad accounts for page ${pageId}`);
+    
+    // Return ad accounts
+    res.json({
+      success: true,
+      data: adAccountsResponse.data.data
+    });
+  } catch (error) {
+    console.error('Error getting ad accounts by page:', error);
+    
+    // Handle Facebook API errors
+    if (error.response && error.response.data && error.response.data.error) {
+      return res.status(400).json({
+        success: false,
+        error: `Facebook API Error: ${error.response.data.error.message}`
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch ad accounts for page'
+    });
+  }
+};
+
 module.exports = {
   getInsights,
   getAdAccounts,
+  getPages,
+  getAdAccountsByPage,
   exportInsights,
   startCronJob
 }; 

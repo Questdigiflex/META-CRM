@@ -89,9 +89,52 @@ export const getExportUrl = (params) => {
   return `${baseUrl}/api/analytics/export?${queryParams.toString()}&token=${token}`;
 };
 
+/**
+ * Get available Facebook pages
+ * @returns {Promise<Object>} - The pages data
+ */
+export const getPages = async () => {
+  try {
+    const response = await api.get('/api/analytics/pages');
+    return response.data;
+  } catch (error) {
+    let errorMsg = 'Failed to load pages';
+    if (error.response && error.response.data && error.response.data.error) {
+      errorMsg = error.response.data.error;
+    } else if (error.message) {
+      errorMsg = error.message;
+    }
+    throw new Error(errorMsg);
+  }
+};
+
+/**
+ * Get ad accounts for a specific page
+ * @param {string} pageId - The page ID
+ * @returns {Promise<Object>} - The ad accounts data
+ */
+export const getAdAccountsByPage = async (pageId) => {
+  try {
+    const response = await api.get('/api/analytics/ad-accounts-by-page', {
+      params: { pageId }
+    });
+    return response.data;
+  } catch (error) {
+    let errorMsg = 'Failed to load ad accounts for page';
+    if (error.response && error.response.data && error.response.data.error) {
+      errorMsg = error.response.data.error;
+    } else if (error.message) {
+      errorMsg = error.message;
+    }
+    throw new Error(errorMsg);
+  }
+};
+
 const analyticsService = {
   getInsights,
   getAdAccounts,
+  getPages,
+  getAdAccountsByPage,
   getExportUrl
 };
 

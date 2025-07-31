@@ -13,6 +13,16 @@ router.get('/insights', auth, analyticsController.getInsights);
 // @access  Private
 router.get('/ad-accounts', auth, analyticsController.getAdAccounts);
 
+// @route   GET /api/analytics/pages
+// @desc    Get available Facebook pages
+// @access  Private
+router.get('/pages', auth, analyticsController.getPages);
+
+// @route   GET /api/analytics/ad-accounts-by-page
+// @desc    Get ad accounts for a specific page
+// @access  Private
+router.get('/ad-accounts-by-page', auth, analyticsController.getAdAccountsByPage);
+
 // @route   GET /api/analytics/export
 // @desc    Export insights to CSV
 // @access  Private

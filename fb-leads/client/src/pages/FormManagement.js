@@ -26,6 +26,7 @@ const FormManagement = () => {
   const [loadingApps, setLoadingApps] = useState(false);
   const [loadingPages, setLoadingPages] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0); // Add a key to force refresh
+  const [selectedPages, setSelectedPages] = useState([]); // Add state for selected pages
   
   const { 
     register, 
@@ -113,6 +114,7 @@ const FormManagement = () => {
         try {
           setLoadingPages(true);
           setPages([]); // Clear previous pages
+          setSelectedPages([]); // Clear selected pages when app changes
           console.log('Fetching pages for app:', selectedAppId);
           const response = await api.get('/api/facebook/pages', {
             params: { appId: selectedAppId }
@@ -229,18 +231,32 @@ const FormManagement = () => {
       return;
     }
     
+    if (selectedPages.length === 0) {
+      toast.error('Please select at least one page to discover forms from');
+      return;
+    }
+    
     try {
       setDiscovering(true);
-      toast.info('Discovering forms from your Facebook pages...');
-      console.log('Discovering forms for app:', selectedAppId);
+      toast.info('Discovering forms from selected Facebook pages...');
+      console.log('Discovering forms for app:', selectedAppId, 'from pages:', selectedPages);
+      console.log('Page IDs being sent:', selectedPages.join(','));
       
       const response = await api.get('/api/facebook/discover', {
-        params: { appId: selectedAppId }
+        params: { 
+          appId: selectedAppId,
+          pageIds: selectedPages.join(',')
+        }
       });
       console.log('Discover forms response:', response.data);
       
       if (response.data.success) {
         toast.success(`Successfully discovered ${response.data.forms} forms from ${response.data.pages} pages, added ${response.data.newForms} new forms`);
+        
+        // Log debug information
+        if (response.data.debug) {
+          console.log('Debug info:', response.data.debug);
+        }
         
         // Refresh forms list
         setRefreshKey(prevKey => prevKey + 1);
@@ -251,6 +267,30 @@ const FormManagement = () => {
     } finally {
       setDiscovering(false);
     }
+  };
+
+  // Handle page selection
+  const handlePageSelection = (pageId) => {
+    console.log('Page selection changed for pageId:', pageId);
+    setSelectedPages(prev => {
+      const newSelection = prev.includes(pageId) 
+        ? prev.filter(id => id !== pageId)
+        : [...prev, pageId];
+      console.log('Updated selected pages:', newSelection);
+      return newSelection;
+    });
+  };
+
+  // Select all pages
+  const handleSelectAllPages = () => {
+    const allPageIds = pages.map(page => page.pageId);
+    console.log('Selecting all pages:', allPageIds);
+    setSelectedPages(allPageIds);
+  };
+
+  // Deselect all pages
+  const handleDeselectAllPages = () => {
+    setSelectedPages([]);
   };
 
   // Start editing a form
@@ -296,7 +336,7 @@ const FormManagement = () => {
             <div className="md:col-span-1">
               <h3 className="text-lg font-medium leading-6 text-gray-900">Discover Forms</h3>
               <p className="mt-1 text-sm text-gray-500">
-                Automatically discover all lead forms from your Facebook pages. This will find all forms associated with the pages you manage.
+                Automatically discover lead forms from your selected Facebook pages. Choose which pages you want to scan for forms.
               </p>
             </div>
             <div className="mt-5 md:mt-0 md:col-span-2">
@@ -333,21 +373,47 @@ const FormManagement = () => {
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Available Pages
+                    Select Pages for Form Discovery
                   </label>
                   <div className="mt-1">
                     {loadingPages ? (
                       <div className="animate-pulse h-20 bg-gray-200 rounded"></div>
                     ) : pages.length > 0 ? (
                       <div className="border border-gray-300 rounded-md p-2 max-h-40 overflow-y-auto">
+                        <div className="mb-2 flex space-x-2">
+                          <button
+                            type="button"
+                            onClick={handleSelectAllPages}
+                            className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                          >
+                            Select All
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleDeselectAllPages}
+                            className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                          >
+                            Deselect All
+                          </button>
+                          <span className="text-xs text-gray-500 ml-2">
+                            {selectedPages.length} of {pages.length} selected
+                          </span>
+                        </div>
                         <ul className="divide-y divide-gray-200">
                           {pages.map(page => (
                             <li key={page.pageId} className="py-2">
                               <div className="flex items-center">
-                                <div className="ml-3">
+                                <input
+                                  type="checkbox"
+                                  id={`page-${page.pageId}`}
+                                  checked={selectedPages.includes(page.pageId)}
+                                  onChange={() => handlePageSelection(page.pageId)}
+                                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                                />
+                                <label htmlFor={`page-${page.pageId}`} className="ml-3 cursor-pointer">
                                   <p className="text-sm font-medium text-gray-900">{page.name}</p>
                                   <p className="text-xs text-gray-500">{page.category}</p>
-                                </div>
+                                </label>
                               </div>
                             </li>
                           ))}
@@ -365,9 +431,9 @@ const FormManagement = () => {
                   <button
                     type="button"
                     onClick={handleDiscoverForms}
-                    disabled={!selectedAppId || discovering}
+                    disabled={!selectedAppId || selectedPages.length === 0 || discovering}
                     className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 ${
-                      !selectedAppId || discovering ? 'opacity-70 cursor-not-allowed' : ''
+                      !selectedAppId || selectedPages.length === 0 || discovering ? 'opacity-70 cursor-not-allowed' : ''
                     }`}
                   >
                     {discovering ? (
@@ -381,7 +447,7 @@ const FormManagement = () => {
                     ) : (
                       <>
                         <MagnifyingGlassIcon className="-ml-1 mr-2 h-5 w-5" />
-                        Discover Forms
+                        Discover Forms from Selected Pages
                       </>
                     )}
                   </button>
